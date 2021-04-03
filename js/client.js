@@ -1015,6 +1015,10 @@ function toId() {
 				this.parseFormats(parts);
 				break;
 
+			case 'requestmulti':
+				this.rooms[''].requestMulti(parts[1], parts[2]);
+				break;
+
 			case 'updateuser':
 				var nlIndex = data.indexOf('\n');
 				if (nlIndex > 0) {

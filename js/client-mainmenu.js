@@ -42,7 +42,7 @@
 				buf += '</div>';
 			} else {
 				buf += '<div class="menugroup"><form class="battleform" data-search="1">';
-				buf += '<p><label class="label">Format:</label>' + this.renderFormats() + '</p>';
+				buf += '<p><label class="label" name="formats">Format:</label>' + this.renderFormats() + '</p>';
 				buf += '<p><label class="label">Team:</label>' + this.renderTeams() + '</p>';
 				buf += '<p><label class="label" name="partner" style="display:none">';
 				buf += 'Partner: <input name="teammate" /></label></p>';
@@ -118,7 +118,7 @@
 		selectTeammate: function (e) {
 			if (e.currentTarget.name !== 'teammate' || e.keyCode !== 13) return;
 			var partner = toID(e.currentTarget.value);
-			if (!patner.length) return;
+			if (!partner.length) return;
 			app.send('/requestpartner ' + partner + ',' + this.format);
 			e.currentTarget.value = '';
 		},
@@ -220,6 +220,15 @@
 			if (!$pmWindow.hasClass('focused') && name.substr(1) !== app.user.get('name')) {
 				$pmWindow.find('h3').addClass('pm-notifying');
 			}
+		},
+		resetBattleForm: function () {
+			var buf = '<p><label class="label">Format:</label>' + this.renderFormats() + '</p>';
+			buf += '<p><label class="label"  name="formats">Team:</label>' + this.renderTeams() + '</p>';
+			buf += '<p><label class="label" name="partner" style="display:none">';
+			buf += 'Partner: <input name="teammate" /></label></p>';
+			buf += '<p><label class="checkbox"><input type="checkbox" name="private" ' + (Storage.prefs('disallowspectators') ? 'checked' : '') + ' /> <abbr title="You can still invite spectators by giving them the URL or using the /invite command">Don\'t allow spectators</abbr></label></p>';
+			buf += '<p><button class="button mainmenu1 big" name="search"><strong>Battle!</strong><br /><small>Find a random opponent</small></button></p></form>';
+			this.$el.find('form.battleform').first().html(buf);
 		},
 		openPM: function (name, dontFocus) {
 			var userid = toID(name);
@@ -1013,6 +1022,38 @@
 			app.send('/cancelsearch');
 			this.searching = false;
 			this.updateSearch();
+		},
+		requestMulti: function (user, formatid) {
+			var $el = this.$el.find('form.battleform').first();
+			$el.find('p.cancel.buttonbar').remove();
+			$el.append('<p class="cancel buttonbar"><button name="cancelMulti" value="' + user + '">Cancel</button></p>');
+			$el.find('label[name=formats]').html(this.renderFormats(formatid));
+			$el.find('label').first().hide();
+			$el.find('button.formatselect').attr({"disabled": ""});
+			var $button = $el.find('button.mainmenu1.big');
+			$button.val(user);
+			$el.find('label.checkbox').hide();
+			$button.attr({"name": "acceptMulti"});
+			$button.html('<strong>Battle!</strong><br /><small>' + user + ' invited you to battle!</small>');
+		},
+		acceptMulti: function (user) {
+			var $el = this.$el.find('form.battleform').first();
+			var teamIndex = $el.find('button[name=team]').val();
+			var team = null;
+			if (Storage.teams[teamIndex]) team = Storage.teams[teamIndex];
+			app.sendTeam(team);
+			var $button = $el.find('button.mainmenu1.big');
+			$button.html('<strong>Your partner is searching now...</strong>');
+			$button.addClass('disabled');
+			this.throttleDelay = setTimeout(function () {
+				app.send('/acceptparter ' + user);
+				this.resetBattleForm();
+			}, 3000);
+		},
+		cancelMulti: function (requester) {
+			this.resetBattleForm();
+			if (this.throttleDelay) clearTimeout(this.throttleDelay);
+			app.send('/denypartner ' + requester);
 		},
 		finduser: function () {
 			if (app.isDisconnected) {
