@@ -1023,37 +1023,59 @@
 			this.searching = false;
 			this.updateSearch();
 		},
-		requestMulti: function (user, formatid) {
+		battleFormRequest: function (user, formatid, message, cmd, denyCmd) {
 			var $el = this.$el.find('form.battleform').first();
 			$el.find('p.cancel.buttonbar').remove();
-			$el.append('<p class="cancel buttonbar"><button name="cancelMulti" value="' + user + '">Cancel</button></p>');
-			$el.find('label[name=formats]').html(this.renderFormats(formatid));
+			$el.append(
+				'<p class="cancel buttonbar">' +
+				'<button name="cancelBattleRequest" value="' + toID(user) + "|" + denyCmd + '">Cancel</button></p>'
+			);
+			$el.find('button[name=format]').replaceWith(this.renderFormats(formatid));
 			$el.find('label').first().hide();
 			$el.find('button.formatselect').attr({"disabled": ""});
+			var $teamButton = $el.find('button[name=team]');
+			var teamIndex = 0;
+			for (var i = 0; i < Storage.teams.length; i++) {
+				if (Storage.teams[i].format === toID(formatid)) {
+					teamIndex = i;
+					break;
+				}
+			}
+			$teamButton.replaceWith(this.renderTeams(formatid, teamIndex));
 			var $button = $el.find('button.mainmenu1.big');
 			$button.val(user);
 			$el.find('label.checkbox').hide();
-			$button.attr({"name": "acceptMulti"});
+			$button.attr({
+				"name": "acceptBattleRequest",
+				"value": toID(user) + '|' + cmd + '|' + message,
+			});
 			$button.html('<strong>Battle!</strong><br /><small>' + user + ' invited you to battle!</small>');
 		},
-		acceptMulti: function (user) {
+		acceptBattleRequest: function (args) {
+			var parts = args.split('|');
+			var user = parts[0];
+			var cmd = parts[1] || '/acceptparter';
+			var message = parts[2] || "Your partner is searching now";
 			var $el = this.$el.find('form.battleform').first();
 			var teamIndex = $el.find('button[name=team]').val();
 			var team = null;
 			if (Storage.teams[teamIndex]) team = Storage.teams[teamIndex];
 			app.sendTeam(team);
 			var $button = $el.find('button.mainmenu1.big');
-			$button.html('<strong>Your partner is searching now...</strong>');
+			$button.html('<strong>' + message + '</strong>');
 			$button.addClass('disabled');
 			this.throttleDelay = setTimeout(function () {
-				app.send('/acceptparter ' + user);
-				this.resetBattleForm();
+				app.send(cmd + " " + user);
+				app.rooms[''].resetBattleForm();
 			}, 3000);
 		},
-		cancelMulti: function (requester) {
+		cancelBattleRequest: function (args) {
+			var parts = args.split('|');
+			var requester = parts[0];
+			var denyCmd = parts[1] || '/denypartner ';
 			this.resetBattleForm();
 			if (this.throttleDelay) clearTimeout(this.throttleDelay);
-			app.send('/denypartner ' + requester);
+			app.send(denyCmd + ' ' + requester);
 		},
 		finduser: function () {
 			if (app.isDisconnected) {
