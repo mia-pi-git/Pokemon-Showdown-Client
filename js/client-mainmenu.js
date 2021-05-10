@@ -1054,7 +1054,7 @@
 		acceptBattleRequest: function (args) {
 			var parts = args.split('|');
 			var user = parts[0];
-			var cmd = parts[1] || '/acceptparter';
+			var cmd = parts[1] || '/acceptpartner';
 			var message = parts[2] || "Your partner is searching now";
 			var $el = this.$el.find('form.battleform').first();
 			var teamIndex = $el.find('button[name=team]').val();
@@ -1072,7 +1072,7 @@
 		cancelBattleRequest: function (args) {
 			var parts = args.split('|');
 			var requester = parts[0];
-			var denyCmd = parts[1] || '/denypartner ';
+			var denyCmd = parts[1] || '/denypartner';
 			this.resetBattleForm();
 			if (this.throttleDelay) clearTimeout(this.throttleDelay);
 			app.send(denyCmd + ' ' + requester);
