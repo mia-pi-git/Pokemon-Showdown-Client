@@ -38,7 +38,6 @@ export async function setupDB() {
 		.map(k => `lib/${k}`)
 		.concat(['replays/ps_prepreplays.sql', 'replays/ps_replays.sql']);
 
-
 	for (const db of databases) {
 		db.pool = mysql.createPool(Config.testdb);
 		for (const file of sqlFiles) {

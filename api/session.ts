@@ -45,11 +45,18 @@ export class Session {
 	getName() {
 		return this.dispatcher.cookies.get('showdown_username') || this.dispatcher.user.name;
 	}
+	makeSid() {
+		if (Config.makeSid) return Config.makeSid.call(this);
+		return new Promise((resolve, reject) => {
+			crypto.randomBytes(24, (err, buf) => {
+				if (err) return reject(err);
+				resolve(buf.toString('hex'));
+			});
+		});
+	}
 	async setSid() {
 		if (!this.sidhash) {
-			this.sidhash = Config.makeSid ?
-				await Config.makeSid.call(this) :
-				crypto.pseudoRandomBytes(24).toString('hex').slice(0, 24);
+			this.sidhash = await this.makeSid();
 		}
 		this.updateCookie();
 		return this.sidhash;
@@ -173,16 +180,13 @@ export class Session {
 				} else if (banstate >= 100) {
 					return ';;Your username is no longer available.';
 				} else if (banstate >= 40) {
-					if (server?.server === 'sim3.psim.us') {
-						userType = '40';
-					} else {
-						userType = '2';
-					}
+					userType = '2';
 				} else if (banstate >= 30) {
 					userType = '6';
 				} else if (banstate >= 20) {
 					userType = '5';
 				} else if (banstate === 0) {
+					// should we update autoconfirmed status? check to see if it's been long enough
 					if (regtime && time() - regtime > (7 * 24 * 60 * 60)) {
 						const ladders = await ladder.selectOne('formatid', 'userid = ? AND w != 0', [userid]);
 						if (ladders) {
@@ -300,9 +304,9 @@ export class Session {
 	async passwordVerify(name: string, pass: string) {
 		const ip = this.dispatcher.getIp();
 		const userid = toID(name);
-		const throttled = await loginthrottle.get(['count', 'time'], ip);
-		let throttleTable = null;
-		if (throttled) throttleTable = throttled;
+		let throttleTable = await (loginthrottle.get(
+			['count', 'time'], ip
+		) as Promise<{count: number, time: number}> || null);
 		if (throttleTable) {
 			if (throttleTable.count > 500) {
 				throttleTable.count++;
