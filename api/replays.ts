@@ -43,7 +43,7 @@ function stripNonAscii(str: string) {
 	return str.replace(/[^(\x20-\x7F)]+/g, '');
 }
 
-function md5(str: string) {
+export function md5(str: string) {
 	return crypto.createHash('md5').update(str).digest('hex');
 }
 
@@ -64,9 +64,11 @@ export const Replays = new class {
 		if (params.serverid !== 'showdown') rating = 0;
 		const inputlog = params.inputlog || null;
 		const out = await prepreplays.replace({
-			id, loghash, p1, p2, format, uploadtime: time(), rating, inputlog,
+			id, loghash, p1, p2, format,
+			uploadtime: time(), rating,
+			inputlog, private: isPrivate,
 		});
-		return !!out;
+		return !!out.affectedRows;
 	}
 
 	generatePassword(length = 31) {

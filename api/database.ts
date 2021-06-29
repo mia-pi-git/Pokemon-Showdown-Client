@@ -16,7 +16,7 @@ export class PSDatabase {
 	prefix: string;
 	constructor(config: {[k: string]: any} = Config.mysql) {
 		this.pool = mysql.createPool(config);
-		this.prefix = config.prefix === true ? "ntbb_" : config.prefix;
+		this.prefix = !config.prefix ? 'ntbb_' : config.prefix;
 		if (!databases.includes(this)) databases.push(this);
 	}
 	query<T = ResultRow>(queryString: string, args: SQLInput[]) {
@@ -47,13 +47,16 @@ export class PSDatabase {
 		return rows ?? null;
 	}
 	async execute(queryString: string, args: SQLInput[]): Promise<mysql.OkPacket> {
-		if (!['UPDATE', 'INSERT', 'DELETE'].some(i => queryString.includes(i))) {
+		if (!['UPDATE', 'INSERT', 'DELETE', 'REPLACE'].some(i => queryString.includes(i))) {
 			throw new Error('Use `query` or `get` for non-insertion / update statements.');
 		}
 		return this.get(queryString, args) as Promise<mysql.OkPacket>;
 	}
 	close() {
 		this.pool.end();
+	}
+	connect(config: {[k: string]: any}) {
+		this.pool = mysql.createPool(config);
 	}
 }
 
@@ -64,8 +67,16 @@ export class DatabaseTable<T> {
 	database: PSDatabase;
 	name: string;
 	primaryKeyName: string;
-	constructor(name: string, primaryKeyName: string, config = Config.mysql) {
+	constructor(
+		name: string,
+		primaryKeyName: string,
+		prefix = 'ntbb_',
+		config = Config.mysql
+	) {
 		this.name = name;
+		if (prefix) {
+			config.prefix = prefix;
+		}
 		this.database = config ? new PSDatabase(config) : psdb;
 		this.primaryKeyName = primaryKeyName;
 	}

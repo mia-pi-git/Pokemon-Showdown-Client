@@ -253,7 +253,7 @@ export class Session {
 		this.updateCookie();
 
 		if (Config.validateassertion) {
-			data = Config.validateassertion.call(this, data, user, ip, server);
+			data = Config.validateassertion.call(this, challenge, user, data);
 		}
 
 		const sign = crypto.createSign('RSA-SHA1');
@@ -266,17 +266,26 @@ export class Session {
 		const disallowed = [
 			...(Config.bannedTerms || []),
 			'nigger', 'nigga', 'faggot',
-			'lolicon', 'roricon', 'lazyafrican',
+			/(lol|ror)icon/, 'lazyafrican',
 			'tranny',
 		];
 		for (const term of disallowed) {
-			if (userid.includes(term)) return false;
+			if (
+				(typeof term === 'object' ? term.test(userid) : userid.includes(term))
+			) {
+				return false;
+			}
 		}
 		return true;
 	}
 	static wordfilter(user: string) {
-		if (!Config.filteredterms) Config.filteredterms = [/(lol|ror)icon/];
-		for (const term of Config.filteredterms) {
+		const disallowed = [
+			...(Config.bannedTerms || []),
+			'nigger', 'nigga', 'faggot',
+			/(lol|ror)icon/, 'lazyafrican',
+			'tranny',
+		];
+		for (const term of disallowed) {
 			user = user.replace(term, '*');
 		}
 		return user;
@@ -295,7 +304,7 @@ export class Session {
 		await users.update(userid, {
 			passwordhash, nonce: null,
 		});
-		await sessions.delete(userid);
+		await sessions.deleteOne('userid = ?', [userid]);
 		if (this.dispatcher.user.id === userid) {
 			await this.login(name, pass);
 		}

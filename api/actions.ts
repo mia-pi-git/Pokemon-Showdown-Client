@@ -222,7 +222,6 @@ export const actions: {[k: string]: QueryHandler} = {
 		});
 	},
 	async changepassword(params) {
-
 		if (this.request.method !== 'POST') {
 			throw new ActionError(`'changepassword' requests can only be made with POST data.`);
 		}

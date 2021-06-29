@@ -9,8 +9,9 @@ import * as net from 'net';
 import {IncomingMessage, ServerResponse} from 'http';
 import {Dispatcher, RegisteredServer} from '../dispatcher';
 import {Config} from '../config-loader';
+import * as crypto from 'crypto';
 import {databases} from '../database';
-import * as mysql from 'mysql';
+import {strict as assert} from 'assert';
 import * as fs from 'fs';
 
 export let setup = false;
@@ -39,9 +40,10 @@ export async function setupDB() {
 		.concat(['replays/ps_prepreplays.sql', 'replays/ps_replays.sql']);
 
 	for (const db of databases) {
-		db.pool = mysql.createPool(Config.testdb);
+		db.connect(Config.testdb);
 		for (const file of sqlFiles) {
-			await db.query(fs.readFileSync(`${__dirname}/../../${file}`, 'utf-8'), []).catch(() => {});
+			const schema = fs.readFileSync(`${__dirname}/../../${file}`, 'utf-8');
+			await db.query(schema, []).catch(() => {});
 		}
 	}
 }
@@ -63,6 +65,32 @@ export function makeDispatcher(body?: {[k: string]: any}, url?: string) {
 export function addServer(server: RegisteredServer) {
 	Dispatcher.servers[server.id] = server;
 	return server;
+}
+
+export async function testDispatcher(
+	opts: {[k: string]: any},
+	setup?: (dispatcher: Dispatcher) => void | Promise<void>,
+	method = 'POST',
+) {
+	const dispatcher = makeDispatcher(opts);
+	dispatcher.request.method = method;
+	if (setup) await setup(dispatcher);
+	let result: any;
+	try {
+		result = await dispatcher.executeActions();
+	} catch (e) {
+		assert(false, e.message);
+	}
+	// we return dispatcher in case we need to do more
+	return {result, dispatcher};
+}
+
+export async function randomBytes(size = 128) {
+	return new Promise((resolve, reject) => {
+		crypto.randomBytes(size, (err, buffer) => {
+			return err ? reject(err) : resolve(buffer.toString('hex'));
+		});
+	});
 }
 
 before(async () => {
